@@ -29,7 +29,7 @@ NixOS host with `boot.binfmt.emulatedSystems = [ "aarch64-linux" ];`, used
 directly or as a remote builder.
 
 ```bash
-nix build github:<owner>/nixos-orangepi-zero3#packages.aarch64-linux.sdImage
+nix build github:antono/nixos-orangepi-zero3#packages.aarch64-linux.sdImage
 ```
 
 The result is `result/sd-image/nixos-orangepi-zero3-*.img.zst`.
@@ -57,7 +57,7 @@ boot.
 ```nix
 {
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
-  inputs.orangepi-zero3.url = "github:<owner>/nixos-orangepi-zero3";
+  inputs.orangepi-zero3.url = "github:antono/nixos-orangepi-zero3";
   inputs.orangepi-zero3.inputs.nixpkgs.follows = "nixpkgs";
 
   outputs = { nixpkgs, orangepi-zero3, ... }: {
