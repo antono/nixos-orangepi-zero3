@@ -1,0 +1,4 @@
+result*
+*.img
+*.img.zst
+build.log
