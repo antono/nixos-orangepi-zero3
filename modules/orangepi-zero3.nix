@@ -2,9 +2,15 @@
 #
 # Everything here is mainline: the board's device tree has been in Linux since
 # 6.6, and nixpkgs ships U-Boot with `orangepi_zero3_defconfig` plus the H616
-# TF-A (the H618 needs no extra TF-A support).
+# TF-A (the H618 needs no extra TF-A support). Optional extras that are not
+# mainline live in ./expansion-board.nix and ./wireless.nix.
 { lib, pkgs, ... }:
 {
+  imports = [
+    ./expansion-board.nix
+    ./wireless.nix
+  ];
+
   nixpkgs.hostPlatform = lib.mkDefault "aarch64-linux";
 
   boot.loader.grub.enable = false;
@@ -13,6 +19,21 @@
   # U-Boot picks the DTB itself (fdtfile=allwinner/sun50i-h618-orangepi-zero3.dtb);
   # naming it here lets NixOS apply device tree overlays to the right file.
   hardware.deviceTree.name = "allwinner/sun50i-h618-orangepi-zero3.dtb";
+  hardware.deviceTree.filter = "sun50i-h618-orangepi-zero3.dtb";
+
+  hardware.deviceTree.overlays = [
+    {
+      # U-Boot leaves the USB-A port's load switch (PC16) off, so keep its
+      # VBUS regulator on permanently instead of relying on the PHY driver.
+      name = "orangepi-zero3-usb1-vbus";
+      dtsText = ''
+        /dts-v1/;
+        /plugin/;
+        / { compatible = "xunlong,orangepi-zero3"; };
+        &reg_usb1_vbus { regulator-always-on; };
+      '';
+    }
+  ];
 
   # The debug UART is the 3-pin header next to the USB-C port.
   boot.kernelParams = [
@@ -20,11 +41,16 @@
     "console=tty0"
   ];
 
+  # The microSD controller (sunxi-mmc) is built into the kernel.
   boot.initrd.availableKernelModules = [
-    "sunxi-mmc" # microSD
     "usb_storage"
     "uas"
   ];
+
+  # CPU frequency scaling. The driver matches the SoC by the machine's root
+  # compatible, not by a device node, so udev never loads it on its own and
+  # the CPU would stay at the boot clock.
+  boot.kernelModules = [ "sun50i-cpufreq-nvmem" ];
 
   # The U-Boot build used by the SD image module and for re-flashing
   # (see README). Exposed as an option so it can be swapped or patched.

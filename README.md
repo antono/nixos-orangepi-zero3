@@ -2,14 +2,16 @@
 
 A small flake that builds a bootable NixOS microSD image for the
 [Orange Pi Zero3](http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-Zero-3.html)
-(Allwinner H618), using **only upstream components**:
+(Allwinner H618). The base system uses **only upstream components**:
 
 - Linux from nixpkgs (the board's device tree has been in mainline since 6.6)
 - U-Boot from nixpkgs (`ubootOrangePiZero3`, `orangepi_zero3_defconfig`)
 - TF-A for the H616 (the H618 needs no extra TF-A support)
 
-No vendor kernel, no patches, so almost everything comes from
-`cache.nixos.org`.
+No vendor kernel and no kernel patches, so almost everything comes from
+`cache.nixos.org`. On-board Wi-Fi and Bluetooth have no mainline driver; they
+are optional and use out-of-tree modules plus device tree overlays (see
+[Wi-Fi and Bluetooth](#wi-fi-and-bluetooth)).
 
 ## Status
 
@@ -18,9 +20,15 @@ No vendor kernel, no patches, so almost everything comes from
 | Boot from microSD        | Image builds and is laid out correctly; **not yet booted on hardware** |
 | Serial console (ttyS0)   | Enabled, 115200 8N1                             |
 | Ethernet                 | Mainline driver (emac + Motorcomm YT8531 PHY)   |
-| USB                      | Mainline                                        |
-| Wi-Fi / Bluetooth        | **Not supported**: Unisoc UWE5622 has no mainline driver |
-| HDMI                     | Not tested                                      |
+| USB (Type-A, Type-C OTG) | Mainline                                        |
+| CPU frequency scaling    | Mainline, up to 1.5 GHz                         |
+| Thermal sensors          | Mainline                                        |
+| GPU (Mali-G31, Panfrost) | Mainline                                        |
+| Analog audio             | Mainline                                        |
+| Wi-Fi / Bluetooth        | Out-of-tree driver, on by default in the image; **not yet tested on hardware** |
+| Expansion board (USB, IR) | Opt-in overlay; **not yet tested on hardware** |
+| HDMI                     | **Not supported**: the H616 HDMI patches are not in mainline yet |
+| Hardware video decoding  | Not supported (Cedrus is not enabled for the H616) |
 
 ## Build the image
 
@@ -47,10 +55,52 @@ boot.
 ## First boot
 
 - The `nixos` user has no password and is logged in automatically on the
-  console (serial or HDMI), the same as the official installer images.
+  serial console, the same as the official installer images.
 - SSH is on, but key-only. Since the `nixos` user has no key yet, either log in
   on the serial console first, or build your own image with your key (below).
 - Ethernet uses DHCP; the board announces itself as `orangepi-zero3.local`.
+
+## Wi-Fi and Bluetooth
+
+The on-board chip is a Unisoc UWE5622 (also sold as AW859A) on SDIO. It has
+no mainline driver, so `hardware.orangepi-zero3.wifi.enable` and
+`hardware.orangepi-zero3.bluetooth.enable` add:
+
+- the out-of-tree [uwe5622-ng](https://github.com/LinuxMint-User/uwe5622-ng)
+  modules (SDIO transport, Wi-Fi, Bluetooth tty, MAC address helper), built
+  against the system's kernel;
+- a device tree overlay with the SDIO slot, its supplies and power sequence,
+  from [orangepi-zero-3-dtb-neo](https://github.com/LinuxMint-User/orangepi-zero-3-dtb-neo);
+- the firmware from [Orange Pi](https://github.com/orangepi-xunlong/firmware),
+  with the Bluetooth `feature_set` fix the driver's README asks for;
+- `hciattach_opi`, built from Orange Pi's sources, as the
+  `uwe5622-bluetooth` service that brings up `hci0`.
+
+The firmware is unfree, so allow it in your configuration:
+
+```nix
+nixpkgs.config.allowUnfreePredicate = pkg: lib.getName pkg == "uwe5622-firmware";
+```
+
+The prebuilt image enables both and runs `wpa_supplicant` with no networks.
+To join one:
+
+```bash
+sudo wpa_cli add_network
+sudo wpa_cli set_network 0 ssid '"MyNetwork"'
+sudo wpa_cli set_network 0 psk '"password"'
+sudo wpa_cli enable_network 0
+sudo wpa_cli save_config
+```
+
+## Expansion board
+
+The 13-pin expansion board adds two USB 2.0 ports and an IR receiver, which
+are described but disabled in the mainline device tree. Enable them with:
+
+```nix
+hardware.orangepi-zero3.expansionBoard.enable = true;
+```
 
 ## Use it from your own flake
 
@@ -65,8 +115,10 @@ boot.
       modules = [
         orangepi-zero3.nixosModules.orangepi-zero3 # board support
         orangepi-zero3.nixosModules.sd-image       # only to build an image
-        {
+        ({ lib, ... }: {
           networking.hostName = "my-board";
+          hardware.orangepi-zero3.wifi.enable = true;
+          nixpkgs.config.allowUnfreePredicate = pkg: lib.getName pkg == "uwe5622-firmware";
           services.openssh.enable = true;
           users.users.me = {
             isNormalUser = true;
@@ -74,7 +126,7 @@ boot.
             openssh.authorizedKeys.keys = [ "ssh-ed25519 AAAA..." ];
           };
           system.stateVersion = "26.05";
-        }
+        })
       ];
     };
   };
@@ -97,12 +149,17 @@ sudo dd if=result/u-boot-sunxi-with-spl.bin of=/dev/mmcblk0 bs=1024 seek=8 conv=
 
 | Output                                   | What it is                               |
 | ---------------------------------------- | ---------------------------------------- |
-| `nixosModules.orangepi-zero3` (default)  | Board support: bootloader, DTB, console  |
+| `nixosModules.orangepi-zero3` (default)  | Board support: bootloader, DTB, console, optional Wi-Fi/BT and expansion board |
 | `nixosModules.sd-image`                  | SD image with U-Boot embedded            |
 | `nixosConfigurations.orangepi-zero3`     | Minimal headless first-boot system       |
 | `packages.aarch64-linux.sdImage`         | The image above                          |
 | `packages.aarch64-linux.uboot`           | U-Boot used in the image                 |
+| `packages.aarch64-linux.uwe5622-ng`      | Wi-Fi/BT kernel modules for the image's kernel |
+| `packages.aarch64-linux.uwe5622-firmware` | Wi-Fi/BT firmware (unfree)              |
+| `packages.aarch64-linux.hciattach-opi`   | Bluetooth attach tool                    |
 
 ## License
 
-MIT
+MIT for this repository. The packaged driver and `hciattach_opi` are GPL;
+the UWE5622 firmware is proprietary and redistributed as Orange Pi and Armbian
+do.

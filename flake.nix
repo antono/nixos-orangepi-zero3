@@ -29,11 +29,21 @@
         ];
       };
 
-      packages.${system} = {
-        sdImage = self.nixosConfigurations.orangepi-zero3.config.system.build.sdImage;
-        uboot = self.nixosConfigurations.orangepi-zero3.config.system.build.uboot;
-        default = self.packages.${system}.sdImage;
-      };
+      packages.${system} =
+        let
+          inherit (self.nixosConfigurations.orangepi-zero3) config pkgs;
+          uwe5622-firmware = pkgs.callPackage ./pkgs/uwe5622-firmware.nix { };
+        in
+        {
+          sdImage = config.system.build.sdImage;
+          uboot = config.system.build.uboot;
+          inherit uwe5622-firmware;
+          uwe5622-ng = config.boot.kernelPackages.callPackage ./pkgs/uwe5622-ng.nix {
+            inherit uwe5622-firmware;
+          };
+          hciattach-opi = pkgs.callPackage ./pkgs/hciattach-opi.nix { inherit uwe5622-firmware; };
+          default = self.packages.${system}.sdImage;
+        };
 
       formatter = forAllSystems (s: nixpkgs.legacyPackages.${s}.nixfmt);
     };

@@ -6,9 +6,22 @@
 {
   networking.hostName = lib.mkDefault "orangepi-zero3";
 
-  # Wired Ethernet comes up via DHCP. On-board Wi-Fi (Unisoc UWE5622) has no
-  # mainline driver, so it is not supported here.
+  # Wired Ethernet comes up via DHCP.
   networking.useDHCP = lib.mkDefault true;
+
+  # On-board Wi-Fi and Bluetooth through the out-of-tree driver (see
+  # wireless.nix), like the vendor images. Its firmware is unfree.
+  hardware.orangepi-zero3.wifi.enable = lib.mkDefault true;
+  hardware.orangepi-zero3.bluetooth.enable = lib.mkDefault true;
+  nixpkgs.config.allowUnfreePredicate = pkg: lib.getName pkg == "uwe5622-firmware";
+
+  # wpa_supplicant with no networks configured: join one at runtime with
+  # `wpa_cli` (add_network / set_network / enable_network / save_config).
+  networking.wireless = {
+    enable = lib.mkDefault true;
+    userControlled = true;
+    allowAuxiliaryImperativeNetworks = true;
+  };
 
   # Key-only SSH. Add your key with `users.users.nixos.openssh.authorizedKeys.keys`.
   services.openssh = {
