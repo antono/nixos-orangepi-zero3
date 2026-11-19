@@ -70,12 +70,30 @@ in
                 vin-supply = <&reg_vcc33_wifi>;
               };
 
+              /*
+               * The chip's enable line (PG18, high = on) is a GPIO-switched
+               * supply rather than `reset-gpios` in the pwrseq node: with
+               * CONFIG_RESET_GPIO (checked on 6.18.63), pwrseq-simple routes
+               * a single reset GPIO through the reset-gpio driver, which only
+               * handles 2-cell GPIO specifiers. Allwinner's pio uses 3 cells,
+               * so the lookup fails with -ENOENT, the pwrseq never probes and
+               * mmc1 never appears.
+               */
+              reg_wifi_en: wifi-en {
+                compatible = "regulator-fixed";
+                regulator-name = "wifi-en";
+                regulator-min-microvolt = <3300000>;
+                regulator-max-microvolt = <3300000>;
+                gpio = <&pio 6 18 0>; /* PG18, GPIO_ACTIVE_HIGH */
+                enable-active-high;
+                startup-delay-us = <200000>;
+                vin-supply = <&reg_vcc33_wifi>;
+              };
+
               wifi_pwrseq: wifi-pwrseq {
                 compatible = "mmc-pwrseq-simple";
                 clocks = <&rtc 1>;
                 clock-names = "osc32k-out";
-                reset-gpios = <&pio 6 18 1>; /* PG18, GPIO_ACTIVE_LOW */
-                post-power-on-delay-ms = <200>;
               };
 
               /* MAC addresses derived from the SoC serial number. */
@@ -89,7 +107,7 @@ in
             };
 
             &mmc1 {
-              vmmc-supply = <&reg_vcc33_wifi>;
+              vmmc-supply = <&reg_wifi_en>;
               vqmmc-supply = <&reg_vcc_wifi_io>;
               mmc-pwrseq = <&wifi_pwrseq>;
               bus-width = <4>;

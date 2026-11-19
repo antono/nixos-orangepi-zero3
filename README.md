@@ -17,15 +17,15 @@ are optional and use out-of-tree modules plus device tree overlays (see
 
 | Feature                  | Status                                          |
 | ------------------------ | ----------------------------------------------- |
-| Boot from microSD        | Image builds and is laid out correctly; **not yet booted on hardware** |
+| Boot from microSD        | Boots on hardware (Orange Pi Zero3)             |
 | Serial console (ttyS0)   | Enabled, 115200 8N1                             |
-| Ethernet                 | Mainline driver (emac + Motorcomm YT8531 PHY)   |
+| Ethernet                 | Mainline driver (emac + Motorcomm YT8531 PHY); works on hardware |
 | USB (Type-A, Type-C OTG) | Mainline                                        |
 | CPU frequency scaling    | Mainline, up to 1.5 GHz                         |
 | Thermal sensors          | Mainline                                        |
 | GPU (Mali-G31, Panfrost) | Mainline                                        |
 | Analog audio             | Mainline                                        |
-| Wi-Fi / Bluetooth        | Out-of-tree driver, on by default in the image; **not yet tested on hardware** |
+| Wi-Fi / Bluetooth        | Out-of-tree driver, on by default in the image. On hardware the chip probes and joins a WPA2 network, but **the board then hard-hangs within seconds to minutes**; cause not found yet |
 | Expansion board (USB, IR) | Opt-in overlay; **not yet tested on hardware** |
 | HDMI                     | **Not supported**: the H616 HDMI patches are not in mainline yet |
 | Hardware video decoding  | Not supported (Cedrus is not enabled for the H616) |
