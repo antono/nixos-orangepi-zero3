@@ -10,15 +10,18 @@
   networking.useDHCP = lib.mkDefault true;
 
   # On-board Wi-Fi and Bluetooth through the out-of-tree driver (see
-  # wireless.nix), like the vendor images. Its firmware is unfree.
-  hardware.orangepi-zero3.wifi.enable = lib.mkDefault true;
-  hardware.orangepi-zero3.bluetooth.enable = lib.mkDefault true;
+  # wireless.nix). Off by default: on hardware the board hard-hangs within
+  # seconds to minutes after the driver loads, cause not found yet (see
+  # README). Set these and `networking.wireless.enable` to true to try it.
+  # Its firmware is unfree.
+  hardware.orangepi-zero3.wifi.enable = lib.mkDefault false;
+  hardware.orangepi-zero3.bluetooth.enable = lib.mkDefault false;
   nixpkgs.config.allowUnfreePredicate = pkg: lib.getName pkg == "uwe5622-firmware";
 
   # wpa_supplicant with no networks configured: join one at runtime with
   # `wpa_cli` (add_network / set_network / enable_network / save_config).
   networking.wireless = {
-    enable = lib.mkDefault true;
+    enable = lib.mkDefault false;
     userControlled = true;
     allowAuxiliaryImperativeNetworks = true;
   };

@@ -25,7 +25,7 @@ are optional and use out-of-tree modules plus device tree overlays (see
 | Thermal sensors          | Mainline                                        |
 | GPU (Mali-G31, Panfrost) | Mainline                                        |
 | Analog audio             | Mainline                                        |
-| Wi-Fi / Bluetooth        | Out-of-tree driver, on by default in the image. On hardware the chip probes and joins a WPA2 network, but **the board then hard-hangs within seconds to minutes**; cause not found yet |
+| Wi-Fi / Bluetooth        | Out-of-tree driver, **off by default** in the image. On hardware the chip probes and joins a WPA2 network, but **the board then hard-hangs within seconds to minutes**; needs further investigation (see [Wi-Fi and Bluetooth](#wi-fi-and-bluetooth)) |
 | Expansion board (USB, IR) | Opt-in overlay; **not yet tested on hardware** |
 | HDMI                     | **Not supported**: the H616 HDMI patches are not in mainline yet |
 | Hardware video decoding  | Not supported (Cedrus is not enabled for the H616) |
@@ -82,8 +82,20 @@ The firmware is unfree, so allow it in your configuration:
 nixpkgs.config.allowUnfreePredicate = pkg: lib.getName pkg == "uwe5622-firmware";
 ```
 
-The prebuilt image enables both and runs `wpa_supplicant` with no networks.
-To join one:
+**Known issue:** on hardware the chip probes and joins a WPA2 network, but the
+board then hard-hangs within seconds to minutes. The cause is not found yet and
+**needs further investigation**: the journal shows no oops or panic before the
+hang, so the next step is to capture the kernel log on the serial console
+(ttyS0, 115200) while it happens. Help is welcome. So the prebuilt image ships with Wi-Fi and Bluetooth **off**. To try them,
+build your own image with:
+
+```nix
+hardware.orangepi-zero3.wifi.enable = true;
+hardware.orangepi-zero3.bluetooth.enable = true;
+networking.wireless.enable = true;
+```
+
+`wpa_supplicant` then runs with no networks. To join one:
 
 ```bash
 sudo wpa_cli add_network
