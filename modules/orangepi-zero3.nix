@@ -3,10 +3,12 @@
 # Everything here is mainline: the board's device tree has been in Linux since
 # 6.6, and nixpkgs ships U-Boot with `orangepi_zero3_defconfig` plus the H616
 # TF-A (the H618 needs no extra TF-A support). Optional extras that are not
-# mainline live in ./expansion-board.nix and ./wireless.nix.
+# mainline live in ./expansion-board.nix and ./wireless.nix; CPU frequency
+# scaling is opt-in in ./cpufreq.nix.
 { lib, pkgs, ... }:
 {
   imports = [
+    ./cpufreq.nix
     ./expansion-board.nix
     ./wireless.nix
   ];
@@ -46,11 +48,6 @@
     "usb_storage"
     "uas"
   ];
-
-  # CPU frequency scaling. The driver matches the SoC by the machine's root
-  # compatible, not by a device node, so udev never loads it on its own and
-  # the CPU would stay at the boot clock.
-  boot.kernelModules = [ "sun50i-cpufreq-nvmem" ];
 
   # The U-Boot build used by the SD image module and for re-flashing
   # (see README). Exposed as an option so it can be swapped or patched.

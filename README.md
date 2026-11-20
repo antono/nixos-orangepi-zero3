@@ -14,7 +14,6 @@ almost everything comes from `cache.nixos.org`.
 - Boot from microSD (U-Boot from nixpkgs, root grows to fill the card)
 - Ethernet with DHCP
 - SSH
-- CPU frequency scaling, up to 1.5 GHz
 
 **Mainline, not tested on hardware yet**
 
@@ -28,6 +27,10 @@ almost everything comes from `cache.nixos.org`.
 
 - **Wi-Fi.** The chip joins a network, then the board hard-hangs within
   seconds to minutes. Off by default. [Needs investigation](#wi-fi-and-bluetooth).
+- **CPU frequency scaling.** A frequency switch oopsed after ~13 h and
+  stalled all microSD I/O. Off by default: the CPU stays at the clock U-Boot
+  sets. Opt in with `hardware.orangepi-zero3.cpufreq.enable`;
+  details in [`modules/cpufreq.nix`](modules/cpufreq.nix). Needs investigation.
 - **HDMI.** The H616 HDMI patches are not in mainline yet.
 - **Hardware video decoding.** Cedrus is not enabled for the H616.
 
