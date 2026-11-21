@@ -15,13 +15,25 @@ almost everything comes from `cache.nixos.org`.
 - Ethernet with DHCP
 - SSH
 
-**Mainline, not tested on hardware yet**
+**Detected on hardware, function not exercised** (checked on a running board,
+2026-11-21; nothing was plugged in or listened to)
 
-- Serial console (ttyS0, 115200 8N1)
-- USB (Type-A, Type-C OTG)
-- Thermal sensors, GPU (Mali-G31, Panfrost), analog audio
-- Expansion board (2× USB, IR), opt-in
-- Bluetooth, opt-in
+- Serial console: `ttyS0` is a 16550A at 115200 8N1 and `serial-getty` runs on
+  it. Output on the 3-pin header itself was not looked at.
+- USB: the EHCI/OHCI host controllers come up (480 Mbit/s and 12 Mbit/s root
+  hubs) and the Type-C OTG controller registers a UDC. No device was attached,
+  so no enumeration or data transfer was tried.
+- Thermal sensors: four zones (cpu, gpu, ve, ddr) report about 48 °C idle.
+- Analog audio: ALSA shows the `sun4i-codec` card with one playback device. No
+  sound was played.
+- GPU (Mali-G31, Panfrost): **flaky**. The driver bound (`mali-g31 id 0x7093`,
+  `/dev/dri/renderD128`) on 2 of the last 7 boots and failed with `error -110`
+  on the other 5. Rendering was not tried. Cause not established.
+
+**Mainline, not tested on hardware at all**
+
+- Expansion board (2× USB, IR), opt-in: not attached.
+- Bluetooth, opt-in.
 
 **Does not work**
 
@@ -29,7 +41,7 @@ almost everything comes from `cache.nixos.org`.
   seconds to minutes. Off by default. [Needs investigation](#wi-fi-and-bluetooth).
 - **CPU frequency scaling.** A frequency switch oopsed after ~13 h and
   stalled all microSD I/O. Off by default: the CPU stays at the clock U-Boot
-  sets. Opt in with `hardware.orangepi-zero3.cpufreq.enable`;
+  sets (1.008 GHz in the clock tree). Opt in with `hardware.orangepi-zero3.cpufreq.enable`;
   details in [`modules/cpufreq.nix`](modules/cpufreq.nix). Needs investigation.
 - **HDMI.** The H616 HDMI patches are not in mainline yet.
 - **Hardware video decoding.** Cedrus is not enabled for the H616.
