@@ -14,6 +14,9 @@ almost everything comes from `cache.nixos.org`.
 - Boot from microSD (U-Boot from nixpkgs, root grows to fill the card)
 - Ethernet with DHCP
 - SSH
+- Wi-Fi (UWE5622), opt-in: joined a WPA2 network and ran 35+ minutes of
+  continuous downloads (about 12 MB/s, 16 GB) without a hang, with CPU
+  frequency scaling off. See [Wi-Fi and Bluetooth](#wi-fi-and-bluetooth).
 
 **Detected on hardware, function not exercised** (checked on a running board,
 2026-11-21; nothing was plugged in or listened to)
@@ -37,12 +40,11 @@ almost everything comes from `cache.nixos.org`.
 
 **Does not work**
 
-- **Wi-Fi.** The chip joins a network, then the board hard-hangs within
-  seconds to minutes. Off by default. [Needs investigation](#wi-fi-and-bluetooth).
 - **CPU frequency scaling.** A frequency switch oopsed after ~13 h and
   stalled all microSD I/O. Off by default: the CPU stays at the clock U-Boot
   sets (1.008 GHz in the clock tree). Opt in with `hardware.orangepi-zero3.cpufreq.enable`;
-  details in [`modules/cpufreq.nix`](modules/cpufreq.nix). Needs investigation.
+  details in [`modules/cpufreq.nix`](modules/cpufreq.nix). The earlier Wi-Fi
+  hangs were probably this (see below). Needs investigation.
 - **HDMI.** The H616 HDMI patches are not in mainline yet.
 - **Hardware video decoding.** Cedrus is not enabled for the H616.
 
@@ -124,10 +126,33 @@ The on-board Unisoc UWE5622 has no mainline driver. The module adds the
 out-of-tree [uwe5622-ng](https://github.com/LinuxMint-User/uwe5622-ng)
 driver, a device tree overlay, the vendor firmware and `hciattach_opi`.
 
-**Known issue.** On hardware the chip probes and joins a WPA2 network, but the
-board then hard-hangs within seconds to minutes. The journal shows no oops or
-panic before the hang. The next step is to capture the kernel log on the
-serial console while it happens. Help is welcome.
+**Status.** With CPU frequency scaling off (the default), Wi-Fi was stable on
+hardware: associated, got a DHCP lease, and ran a 25 minute loop of 100 MB
+downloads on top of 10 minutes of use, 16 GB in total, with no disconnect,
+oops or hang, and the kernel log (sent over netconsole) was clean. Before that,
+the board hard-hung within seconds to minutes of joining a network, with no
+oops or panic in the journal, and cpufreq was on. A cpufreq oops on a frequency
+switch is also what froze the board later (see [`modules/cpufreq.nix`](modules/cpufreq.nix)),
+and network load drives frequency switches, so the two were probably the same
+problem. **Not proven**: the check that would prove it, Wi-Fi with cpufreq on
+again, was not run because it can freeze the board. Wi-Fi stays off by default
+in this repo's modules; the board this was developed on runs with it on.
+
+Notes from testing:
+
+- The first association attempt after boot was rejected by the access point
+  (status 1); the second succeeded. Cause not established.
+- Not tested: Bluetooth, WPA3 (the driver has no SAE support), long uptimes
+  beyond the 35 minutes above.
+- With both Ethernet and Wi-Fi up, the NixOS reverse-path filter drops replies
+  that arrive on the interface that is not the default route, so
+  `ping -I wlan0 <internet host>` fails even though Wi-Fi works. To test
+  Wi-Fi, make its route the preferred one (`ip route add default via <gw> dev
+  wlan0 metric 100`).
+- To try Wi-Fi without risking a boot loop, put it in a NixOS `specialisation`:
+  it becomes a separate extlinux entry and the default entry stays without
+  Wi-Fi. The hardware watchdog (`systemd.settings.Manager.RuntimeWatchdogSec`)
+  resets a frozen board on its own.
 
 To try it anyway:
 
